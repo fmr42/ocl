@@ -1,7 +1,7 @@
 
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
+#include <luajit-2.0/lua.h>
+#include <luajit-2.0/lauxlib.h>
+#include <luajit-2.0/lualib.h>
 
 #define TLSF_INITIAL_POOLSIZE	1*1024*1024
 #undef	TLSF_DEBUG

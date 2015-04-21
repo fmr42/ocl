@@ -1,4 +1,9 @@
 /*
+ *  * Copied from the Luajit sources.
+ */
+
+
+/*
  * Copied from the Lua sources.
  */
 

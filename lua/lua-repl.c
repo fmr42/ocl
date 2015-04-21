@@ -17,10 +17,10 @@
 
 #define lua_c
 
-#include "lua.h"
+#include "lua-repl.h"
 
-#include "lauxlib.h"
-#include "lualib.h"
+#include "lauxlib-repl.h"
+#include "lualib-repl.h"
 
 #ifdef LUA_RTT_TLSF
  #define RTTLUA_BOILER  "OROCOS RTTLua (TLSF)"

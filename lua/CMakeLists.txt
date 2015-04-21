@@ -8,13 +8,42 @@ cmake_dependent_option(LUA_RTT_TYPEINFO_CACHING "Let Lua RTT bindings do Typeinf
 
 if(BUILD_LUA_RTT)
 
-  find_package(Lua51)
+# LUAJIT_FOUND
+# LUAJIT_INCLUDE_DIR
+# LUAJIT_LIBRARY
 
-  if(NOT LUA51_FOUND)
+if (WIN32)
+  find_path (LUAJIT_INCLUDE_DIR lua.hpp
+             ${LUAJIT_ROOT_PATH}/include/
+             ${PROJECT_SOURCE_DIR}/extern/luajit/include
+             doc "The directory where lua.hpp and other lua headers reside")
+  find_library (LUAJIT_LIBRARY
+                NAMES lua51
+                PATHS
+                ${PROJECT_SOURCE_DIR}/extern/luajit/lib
+                DOC "The LuaJIT library")
+else (WIN32)
+    find_path (LUAJIT_INCLUDE_DIR lua.hpp
+               ~/include/luajit-2.0
+               /usr/include/luajit-2.0/
+               /usr/local/include/luajit-2.0/)
+    find_library (LUAJIT_LIBRARY luajit-5.1
+                  ~/lib/
+                  /usr/lib
+                  /usr/local/lib)
+endif (WIN32)
 
-    message(WARNING "Can not build LuaComponent without Lua library. On debian-like systems try 'sudo apt-get install liblua5.1-0-dev'.")
+  if ( LUAJIT_INCLUDE_DIR_NOTFOUND OR LUAJIT_LIBRARY_NOTFOUND )
 
-  else(NOT LUA51_FOUND)
+    if    ( LUAJIT_INCLUDE_DIR_NOTFOUND )
+      message(WARNING "Can not build LuaComponent without Luajit headers.")
+    endif ( LUAJIT_INCLUDE_DIR_NOTFOUND )
+    if    ( LUAJIT_LIBRARY_NOTFOUND )
+      message(WARNING "Can not build LuaComponent without Luajit library.")
+    endif ( LUAJIT_LIBRARY_NOTFOUND  )
+
+  else ( LUAJIT_INCLUDE_DIR_NOTFOUND OR LUAJIT_LIBRARY_NOTFOUND )
+    message(WARNING "Luajit-2.0 will replace lua-5.1!!! (This is good)")
 
     if ( BUILD_RTALLOC )
       # default to 512 kilobytes - see minimum size warning in deployer-funcs.cpp
@@ -32,11 +61,11 @@ if(BUILD_LUA_RTT)
       add_definitions("-DORO_BUILD_LOGGING")
     endif ( BUILD_LOGGING AND LOG4CPP_FOUND )
 
-    # compiling lua component and rttlua interpreter
-    include_directories(${LUA_INCLUDE_DIR})
+    ## compiling lua component and rttlua interpreter
+    #include_directories(${LUAJIT_INCLUDE_DIR})
 
     add_library(lua-repl STATIC lua-repl.c)
-    target_link_libraries(lua-repl ${LUA_LIBRARIES})
+    target_link_libraries(lua-repl ${LUAJIT_LIBRARY})
     set_target_properties(lua-repl PROPERTIES COMPILE_FLAGS "-DOROCOS_TARGET=${OROCOS_TARGET}")
 
     if(LUA_RTT_TYPEINFO_CACHING)
@@ -45,8 +74,8 @@ if(BUILD_LUA_RTT)
 
     orocos_component(orocos-ocl-lua rtt.cpp LuaComponent.cpp )
     orocos_executable(rttlua rtt.cpp LuaComponent.cpp)
-    program_add_deps(rttlua lua-repl orocos-ocl-deployment ${LUA_LIBRARIES} ${OROCOS-RTT_LIBRARIES} ${EXTRA_DEPS} ${EXTRA_LIBRARIES} )
-    target_link_libraries(orocos-ocl-lua ${LUA_LIBRARIES} ${OROCOS-RTT_LIBRARIES} )
+    program_add_deps(rttlua lua-repl orocos-ocl-deployment ${LUAJIT_LIBRARY} ${OROCOS-RTT_LIBRARIES} ${EXTRA_DEPS} ${EXTRA_LIBRARIES} )
+    target_link_libraries(orocos-ocl-lua ${LUAJIT_LIBRARY} ${OROCOS-RTT_LIBRARIES} )
     set_target_properties(orocos-ocl-lua PROPERTIES COMPILE_FLAGS "-DOCL_COMPONENT_ONLY")
     install(TARGETS rttlua RUNTIME DESTINATION bin)
     install(PROGRAMS ../bin/rttlua DESTINATION bin) # The shell script
@@ -68,7 +97,7 @@ if(BUILD_LUA_RTT)
     if(BUILD_LUA_RTT_CORBA AND OROCOS-RTT_CORBA_FOUND)
 
       orocos_executable(rttlua-corba rtt.cpp LuaComponent.cpp)
-      program_add_deps(rttlua-corba lua-repl orocos-ocl-deployment ${LUA_LIBRARIES} ${OROCOS-RTT_CORBA_LIBRARIES} orocos-ocl-deployment-corba ${EXTRA_DEPS} ${EXTRA_LIBRARIES} )
+      program_add_deps(rttlua-corba lua-repl orocos-ocl-deployment ${LUAJIT_LIBRARY} ${OROCOS-RTT_CORBA_LIBRARIES} orocos-ocl-deployment-corba ${EXTRA_DEPS} ${EXTRA_LIBRARIES} )
       set_target_properties(rttlua-corba PROPERTIES COMPILE_FLAGS "-DLUA_RTT_CORBA")
       install(TARGETS rttlua-corba RUNTIME DESTINATION bin)
       install(PROGRAMS ../bin/rttlua DESTINATION bin RENAME rttlua-corba) # The shell script
@@ -81,7 +110,7 @@ if(BUILD_LUA_RTT)
       orocos_component(orocos-ocl-lua-tlsf rtt.cpp LuaComponent.cpp )
       orocos_executable(rttlua-tlsf rtt.cpp LuaComponent.cpp)
       add_library(lua-repl-tlsf STATIC lua-repl.c)
-      target_link_libraries(lua-repl-tlsf ${READLINE_LIBRARY} ${CURSES_LIBRARY} "dl" ${HISTORY_LIBRARY} ${LUA_LIBRARIES})
+      target_link_libraries(lua-repl-tlsf ${READLINE_LIBRARY} ${CURSES_LIBRARY} "dl" ${HISTORY_LIBRARY} ${LUAJIT_LIBRARY})
       set_target_properties(lua-repl-tlsf PROPERTIES COMPILE_FLAGS "-DOROCOS_TARGET=${OROCOS_TARGET} -DLUA_RTT_TLSF ${LUA_REPL_FLAGS}")
 
       add_library(tlsf_rtt STATIC tlsf.c tlsf_rtt.c)
@@ -90,8 +119,8 @@ if(BUILD_LUA_RTT)
       set_target_properties(orocos-ocl-lua-tlsf PROPERTIES COMPILE_FLAGS "-DOCL_COMPONENT_ONLY -DLUA_RTT_TLSF")
       set_target_properties(rttlua-tlsf PROPERTIES COMPILE_FLAGS "-DLUA_RTT_TLSF")
 
-      program_add_deps(rttlua-tlsf tlsf_rtt lua-repl-tlsf orocos-ocl-deployment ${LUA_LIBRARIES} ${OROCOS-RTT_LIBRARIES} ${EXTRA_DEPS} ${EXTRA_LIBRARIES} )
-      target_link_libraries(orocos-ocl-lua-tlsf tlsf_rtt ${LUA_LIBRARIES} ${OROCOS-RTT_LIBRARIES})
+      program_add_deps(rttlua-tlsf tlsf_rtt lua-repl-tlsf orocos-ocl-deployment ${LUAJIT_LIBRARY} ${OROCOS-RTT_LIBRARIES} ${EXTRA_DEPS} ${EXTRA_LIBRARIES} )
+      target_link_libraries(orocos-ocl-lua-tlsf tlsf_rtt ${LUAJIT_LIBRARY} ${OROCOS-RTT_LIBRARIES})
 
       install(TARGETS rttlua-tlsf RUNTIME DESTINATION bin)
       install(PROGRAMS ../bin/rttlua-tlsf DESTINATION bin) # The shell script
@@ -109,8 +138,8 @@ if(BUILD_LUA_RTT)
       add_library(deployer SHARED deployer.cpp)
       add_library(rtt SHARED rtt.cpp)
 
-      target_link_libraries(deployer ${LUA_LIBRARIES} ${OROCOS-RTT_LIBRARIES} orocos-ocl-deployment)
-      target_link_libraries(rtt ${LUA_LIBRARIES} ${OROCOS-RTT_LIBRARIES})
+      target_link_libraries(deployer ${LUAJIT_LIBRARY} ${OROCOS-RTT_LIBRARIES} orocos-ocl-deployment)
+      target_link_libraries(rtt ${LUAJIT_LIBRARY} ${OROCOS-RTT_LIBRARIES})
 
       # need next line?
       set_target_properties(deployer PROPERTIES PREFIX "")
@@ -118,6 +147,7 @@ if(BUILD_LUA_RTT)
 
     endif(BUILD_LUA_RTT_DYNAMIC_MODULES)
 
-  endif(NOT LUA51_FOUND)
+  endif ( LUAJIT_INCLUDE_DIR_NOTFOUND OR LUAJIT_LIBRARY_NOTFOUND )
 
 endif(BUILD_LUA_RTT)
+
